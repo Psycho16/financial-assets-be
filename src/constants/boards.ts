@@ -1,0 +1,1 @@
+export const ACCEPTED_BOARDS = ['TQBR', 'TQIF', 'TQTF', "CETS"]
