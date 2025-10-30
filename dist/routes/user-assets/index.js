@@ -18,7 +18,6 @@ const userAssets = async (fastify, opts) => {
     fastify.get('/', async function (request, reply) {
         const { secId } = request.query;
         const boardLink = getMoexBoardLink(secId, "TQBR");
-        console.log('request', request.query.secId, DB);
         const moexResp = await fetch(boardLink);
         const data = await moexResp.json();
         reply.send(data);
