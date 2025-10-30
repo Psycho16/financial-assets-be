@@ -11,6 +11,7 @@ type SecuritiesData = {
 type TickerOption = {
   ticker: string;
   name: string;
+  boardName: string;
 }
 
 const getTickerOptions = (assets: string[][]): TickerOption[] => {
@@ -20,7 +21,8 @@ const getTickerOptions = (assets: string[][]): TickerOption[] => {
   })
   const tickerOptions = acceptedAssets.map(item => ({
     ticker: item[0],
-    name: item[1]
+    name: item[1],
+    boardName: item[12] ?? item[13]
   }))
 
   return tickerOptions
@@ -40,7 +42,6 @@ const acceptedAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> 
     const res = await fetch(`https://iss.moex.com/iss/securities.json?q=${search}`)
     const data
       = await res.json() as SecuritiesData
-
     const tickerOptions = getTickerOptions(data.securities.data)
 
     reply.send(JSON.stringify({ tickerOptions }));

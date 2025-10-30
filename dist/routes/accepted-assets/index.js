@@ -9,7 +9,8 @@ const getTickerOptions = (assets) => {
     });
     const tickerOptions = acceptedAssets.map(item => ({
         ticker: item[0],
-        name: item[1]
+        name: item[1],
+        boardName: item[12] ?? item[13]
     }));
     return tickerOptions;
 };
