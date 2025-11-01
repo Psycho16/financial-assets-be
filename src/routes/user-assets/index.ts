@@ -16,14 +16,14 @@ interface MyRouteGeneric extends RouteGenericInterface {
   Querystring: GetAssetsData;
 }
 
-const DB = {
-  "1": {
-    ticker: "SBERP",
-    quantity: 1200,
-    userCategory: "Акции",
-    boardName: "TQBR",
-  }
-}
+// const DB = {
+//   "1": {
+//     ticker: "SBERP",
+//     quantity: 1200,
+//     userCategory: "Акции",
+//     boardName: "TQBR",
+//   }
+// }
 
 const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get<MyRouteGeneric>('/', async function (request, reply) {

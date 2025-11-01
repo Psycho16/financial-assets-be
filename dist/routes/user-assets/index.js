@@ -6,14 +6,6 @@ const getMoexBoardLink = (secid, boardName) => {
     }
     return `https://iss.moex.com/iss/engines/stock/markets/shares/boards/${boardName}/securities/${encodeURIComponent(secid)}.json?iss.meta=off&iss.only=marketdata&lang=ru`;
 };
-const DB = {
-    "1": {
-        ticker: "SBERP",
-        quantity: 1200,
-        userCategory: "Акции",
-        boardName: "TQBR",
-    }
-};
 const userAssets = async (fastify, opts) => {
     fastify.get('/', async function (request, reply) {
         const { secId } = request.query;
