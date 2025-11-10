@@ -15,22 +15,31 @@ interface SignIn {
   password: string
 }
 
+interface AddAsset {
+  userId: string
+  ticker: string
+  name: string
+  category: string
+  sector: string
+  quantity: number
+  boardName: string
+}
+
 const supabase = createClient(process.env.SUPABASE_URL ?? "", process.env.SUPABASE_ANON_KEY ?? "");
 
 const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.post<{ Body: SignUp }>('/sign-up', async function (request, reply) {
     const { email, password } = request.body
+
     const { data, error } = await supabase.auth.signUp({
       email: email,
       password: password,
-      options: {
-      },
     })
 
     if (error) {
       return reply.status(500).send(error);
     }
-    console.log('email, password', { email, password })
+
     return reply.send(data);
   })
 
@@ -61,17 +70,47 @@ const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     return reply.send(data);
   })
 
-  fastify.get('/', async function (request, reply) {
-    const { data, error } = await supabase
-      .from('your_table_name') // Замените на имя вашей таблицы
-      .select('*');
+  fastify.post<{ Body: AddAsset }>('/add-asset', async function (request, reply) {
+    const { userId, ticker, name, category, sector, quantity, boardName } = request.body;
 
-
-    if (error) {
-      return reply.status(500).send(error);
+    // Проверяем наличие обязательных полей
+    if (!userId || !ticker || !name || !category || !sector || typeof quantity !== 'number' || !boardName) {
+      return reply.code(400).send({ error: `Недостаточно данных!, userId:${!userId}, ticker:${!ticker}, name: ${!name}, category:${!category}, sector: ${!sector}, quantity: ${typeof quantity !== 'number'}, boardName: ${!boardName}` });
     }
 
-    return reply.send(data);
+    try {
+
+      let { data: existingRecord, error: selectError } = await supabase
+        .from('user-assets')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('ticker', ticker)
+
+      if (!existingRecord?.length) {
+        const { data, error } = await supabase.from('user-assets').insert({
+          user_id: userId,
+          ticker,
+          name,
+          category,
+          sector,
+          quantity,
+          boardName
+        });
+
+        if (error) throw error;
+        reply.send({ message: 'Данные успешно добавлены!', data });
+      } else {
+        reply.code(400).send({
+          error: `Данные для этого актива уже существуют`,
+          existingRecord,
+          selectError
+        });
+      }
+
+    } catch (err) {
+      console.error(JSON.stringify(err)); // Логируем ошибку
+      reply.code(500).send({ error: JSON.stringify(err) });
+    }
   })
 
 }
