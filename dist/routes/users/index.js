@@ -42,7 +42,7 @@ const users = async (fastify, opts) => {
             return reply.code(400).send({ error: `Недостаточно данных!, userId:${!userId}, ticker:${!ticker}, name: ${!name}, category:${!category}, sector: ${!sector}, quantity: ${typeof quantity !== 'number'}, boardName: ${!boardName}` });
         }
         try {
-            let { data: existingRecord, error: selectError } = await supabase
+            const { data: existingRecord, error: selectError } = await supabase
                 .from('user-assets')
                 .select('*')
                 .eq('user_id', userId)

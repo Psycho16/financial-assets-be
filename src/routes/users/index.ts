@@ -79,8 +79,7 @@ const users: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
     }
 
     try {
-
-      let { data: existingRecord, error: selectError } = await supabase
+      const { data: existingRecord, error: selectError } = await supabase
         .from('user-assets')
         .select('*')
         .eq('user_id', userId)

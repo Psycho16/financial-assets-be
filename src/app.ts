@@ -35,7 +35,8 @@ const app: FastifyPluginAsync<AppOptions> = async (
   })
 
   void fastify.register(cors, {
-    origin: ["http://localhost:5173", "https://financial-assets.vercel.app"]
+    origin: ["http://localhost:5173", "https://financial-assets.vercel.app"],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
   })
 
 }

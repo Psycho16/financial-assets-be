@@ -19,7 +19,8 @@ const app = async (fastify, opts) => {
         options: opts
     });
     void fastify.register(cors_1.default, {
-        origin: ["http://localhost:5173", "https://financial-assets.vercel.app"]
+        origin: ["http://localhost:5173", "https://financial-assets.vercel.app"],
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
     });
 };
 exports.app = app;
