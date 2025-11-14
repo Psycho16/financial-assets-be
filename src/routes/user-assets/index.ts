@@ -23,12 +23,21 @@ interface EditQuantity {
   quantity: number
 }
 
+interface DeleteAsset {
+  assetId: string
+}
+
+interface DeleteGeneric extends RouteGenericInterface {
+  Querystring: DeleteAsset;
+}
+
 const supabase = createClient<Database>(process.env.SUPABASE_URL ?? "", process.env.SUPABASE_ANON_KEY ?? "");
 
 const isMarketDataCorrect = (data: unknown): data is { marketdata: { columns: string[], data: unknown[] } } => {
   typeof data === 'object' && data !== null && "marketdata" in data
   return typeof data === 'object' && data !== null && "marketdata" in data && typeof data.marketdata === 'object' && data.marketdata !== null && "columns" in data.marketdata && Array.isArray(data.marketdata.columns) && "data" in data.marketdata && Array.isArray(data.marketdata.data)
 }
+
 const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get<MyRouteGeneric>('/', async function (request, reply) {
     const { userId } = request.query
@@ -109,7 +118,6 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 
   fastify.patch<{ Body: EditQuantity }>('/edit-asset-quantity', async function (request, reply) {
     const { assetId, quantity } = request.body
-    console.log('request.body 1', request.body)
     const { data, error } = await supabase
       .from('user-assets')
       .update({
@@ -117,7 +125,22 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       })
       .eq('id', assetId)
       .select()
-    console.log('error', data, error)
+
+    if (error) {
+      return reply.status(500).send(error);
+    }
+
+    return reply.send(data);
+  })
+
+  fastify.delete<DeleteGeneric>('/delete-asset', async function (request, reply) {
+    const { assetId } = request.query
+
+    const { data, error } = await supabase
+      .from('user-assets')
+      .delete()
+      .eq('id', assetId)
+
     if (error) {
       return reply.status(500).send(error);
     }

@@ -86,7 +86,6 @@ const userAssets = async (fastify, opts) => {
     });
     fastify.patch('/edit-asset-quantity', async function (request, reply) {
         const { assetId, quantity } = request.body;
-        console.log('request.body 1', request.body);
         const { data, error } = await supabase
             .from('user-assets')
             .update({
@@ -94,7 +93,17 @@ const userAssets = async (fastify, opts) => {
         })
             .eq('id', assetId)
             .select();
-        console.log('error', data, error);
+        if (error) {
+            return reply.status(500).send(error);
+        }
+        return reply.send(data);
+    });
+    fastify.delete('/delete-asset', async function (request, reply) {
+        const { assetId } = request.query;
+        const { data, error } = await supabase
+            .from('user-assets')
+            .delete()
+            .eq('id', assetId);
         if (error) {
             return reply.status(500).send(error);
         }
