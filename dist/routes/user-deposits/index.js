@@ -43,6 +43,20 @@ const userDeposits = async (fastify, opts) => {
             reply.code(500).send({ error: JSON.stringify(err) });
         }
     });
+    fastify.patch('/edit-deposit-amount', async function (request, reply) {
+        const { depositId, amount } = request.body;
+        const { data, error } = await supabase
+            .from('user-deposits')
+            .update({
+            amount
+        })
+            .eq('id', depositId)
+            .select();
+        if (error) {
+            return reply.status(500).send(error);
+        }
+        return reply.send(data);
+    });
     fastify.delete('/delete-deposit', async function (request, reply) {
         const { depositId } = request.query;
         const { data, error } = await supabase

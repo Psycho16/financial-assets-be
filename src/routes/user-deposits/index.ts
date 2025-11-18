@@ -22,6 +22,11 @@ interface DeleteAsset {
   depositId: string
 }
 
+interface EditDepositAmount {
+  depositId: string
+  amount: number
+}
+
 interface DeleteGeneric extends RouteGenericInterface {
   Querystring: DeleteAsset;
 }
@@ -76,6 +81,23 @@ const userDeposits: FastifyPluginAsync = async (fastify, opts): Promise<void> =>
       console.error(JSON.stringify(err)); // Логируем ошибку
       reply.code(500).send({ error: JSON.stringify(err) });
     }
+  })
+
+  fastify.patch<{ Body: EditDepositAmount }>('/edit-deposit-amount', async function (request, reply) {
+    const { depositId, amount } = request.body
+    const { data, error } = await supabase
+      .from('user-deposits')
+      .update({
+        amount
+      })
+      .eq('id', depositId)
+      .select()
+
+    if (error) {
+      return reply.status(500).send(error);
+    }
+
+    return reply.send(data);
   })
 
   fastify.delete<DeleteGeneric>('/delete-deposit', async function (request, reply) {
