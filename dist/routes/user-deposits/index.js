@@ -1,0 +1,59 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const supabase_js_1 = require("@supabase/supabase-js");
+const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL ?? "", process.env.SUPABASE_ANON_KEY ?? "");
+const userDeposits = async (fastify, opts) => {
+    fastify.get('/', async function (request, reply) {
+        const { userId } = request.query;
+        try {
+            const { data: userDeposits, error: userDepositsError } = await supabase
+                .from('user-deposits')
+                .select('*')
+                .eq('user_id', userId);
+            if (userDepositsError)
+                throw userDepositsError;
+            reply.send({ userDeposits });
+        }
+        catch (err) {
+            reply.code(400).send({
+                error: `Ошибка при получении данных из базы данных`,
+                err,
+            });
+        }
+    });
+    fastify.post('/add-deposit', async function (request, reply) {
+        const { userId, name, endDate, amount, ratePercent } = request.body;
+        if (!userId || !endDate || !name || !amount || !ratePercent) {
+            return reply.code(400).send({ error: `Недостаточно данных!, userId:${!userId}, endDate:${!endDate}, name: ${!name}, amount:${!amount}, ratePercent: ${!ratePercent}` });
+        }
+        try {
+            const { data, error } = await supabase.from('user-deposits').insert({
+                user_id: userId,
+                name,
+                rate_percent: ratePercent,
+                amount,
+                end_date: endDate,
+            });
+            if (error)
+                throw error;
+            reply.send({ message: 'Вклад успешно добавлен!', data });
+        }
+        catch (err) {
+            console.error(JSON.stringify(err));
+            reply.code(500).send({ error: JSON.stringify(err) });
+        }
+    });
+    fastify.delete('/delete-deposit', async function (request, reply) {
+        const { depositId } = request.query;
+        const { data, error } = await supabase
+            .from('user-deposits')
+            .delete()
+            .eq('id', depositId);
+        if (error) {
+            return reply.status(500).send(error);
+        }
+        return reply.send({ message: 'Вклад успешно удален!', data });
+    });
+};
+exports.default = userDeposits;
+//# sourceMappingURL=index.js.map

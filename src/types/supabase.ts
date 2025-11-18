@@ -75,6 +75,36 @@ export type Database = {
         }
         Relationships: []
       }
+      "user-deposits": {
+        Row: {
+          amount: number | null
+          created_at: string
+          end_date: string | null
+          id: string
+          name: string | null
+          rate_percent: number | null
+          "user-id": string | null
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          name?: string | null
+          rate_percent?: number | null
+          "user-id"?: string | null
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          end_date?: string | null
+          id?: string
+          name?: string | null
+          rate_percent?: number | null
+          "user-id"?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

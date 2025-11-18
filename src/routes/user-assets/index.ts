@@ -18,6 +18,16 @@ interface MyRouteGeneric extends RouteGenericInterface {
   Querystring: GetAssetsData;
 }
 
+interface AddAsset {
+  userId: string
+  ticker: string
+  name: string
+  category: string
+  sector: string
+  quantity: number
+  boardName: string
+}
+
 interface EditQuantity {
   assetId: string
   quantity: number
@@ -52,7 +62,6 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
 
       if (!Array.isArray(userAssetsFromDB)) throw "Ошибка получения данных для этого пользователя"
       try {
-
 
         const userAssetsWithPrice = await Promise.all(userAssetsFromDB.map(async (assetData) => {
           const { ticker, boardName } = assetData
@@ -113,6 +122,48 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         error: `Ошибка получения данных для этого пользователя`,
         err,
       });
+    }
+  })
+
+  fastify.post<{ Body: AddAsset }>('/add-asset', async function (request, reply) {
+    const { userId, ticker, name, category, sector, quantity, boardName } = request.body;
+
+    // Проверяем наличие обязательных полей
+    if (!userId || !ticker || !name || !category || !sector || typeof quantity !== 'number' || !boardName) {
+      return reply.code(400).send({ error: `Недостаточно данных!, userId:${!userId}, ticker:${!ticker}, name: ${!name}, category:${!category}, sector: ${!sector}, quantity: ${typeof quantity !== 'number'}, boardName: ${!boardName}` });
+    }
+
+    try {
+      const { data: existingRecord, error: selectError } = await supabase
+        .from('user-assets')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('ticker', ticker)
+
+      if (!existingRecord?.length) {
+        const { data, error } = await supabase.from('user-assets').insert({
+          user_id: userId,
+          ticker,
+          name,
+          category,
+          sector,
+          quantity,
+          boardName
+        });
+
+        if (error) throw error;
+        reply.send({ message: 'Актив успешно добавлен!', data });
+      } else {
+        reply.code(400).send({
+          error: `Данные для этого актива уже существуют`,
+          existingRecord,
+          selectError
+        });
+      }
+
+    } catch (err) {
+      console.error(JSON.stringify(err)); // Логируем ошибку
+      reply.code(500).send({ error: JSON.stringify(err) });
     }
   })
 
