@@ -43,6 +43,7 @@ export type Database = {
         Row: {
           boardName: string | null
           category: string | null
+          comment: string | null
           created_at: string
           id: string
           name: string | null
@@ -54,6 +55,7 @@ export type Database = {
         Insert: {
           boardName?: string | null
           category?: string | null
+          comment?: string | null
           created_at?: string
           id?: string
           name?: string | null
@@ -65,6 +67,7 @@ export type Database = {
         Update: {
           boardName?: string | null
           category?: string | null
+          comment?: string | null
           created_at?: string
           id?: string
           name?: string | null
@@ -83,7 +86,7 @@ export type Database = {
           id: string
           name: string | null
           rate_percent: number | null
-          "user-id": string | null
+          user_id: string | null
         }
         Insert: {
           amount?: number | null
@@ -92,7 +95,7 @@ export type Database = {
           id?: string
           name?: string | null
           rate_percent?: number | null
-          "user-id"?: string | null
+          user_id?: string | null
         }
         Update: {
           amount?: number | null
@@ -101,7 +104,7 @@ export type Database = {
           id?: string
           name?: string | null
           rate_percent?: number | null
-          "user-id"?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }

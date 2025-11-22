@@ -7,6 +7,21 @@ const getMoexBoardLink = (secid, boardName) => {
     }
     return `https://iss.moex.com/iss/engines/stock/markets/shares/boards/${boardName}/securities/${encodeURIComponent(secid)}.json?iss.meta=off&iss.only=marketdata&lang=ru`;
 };
+const getAssetResponseType = (asset) => {
+    return {
+        price: asset.price,
+        totalPrice: asset.totalPrice,
+        changePercent: asset.changePercent,
+        boardName: asset.boardName,
+        category: asset.category,
+        id: asset.id,
+        name: asset.name,
+        quantity: asset.quantity,
+        sector: asset.sector,
+        ticker: asset.ticker,
+        comment: asset.comment,
+    };
+};
 const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL ?? "", process.env.SUPABASE_ANON_KEY ?? "");
 const isMarketDataCorrect = (data) => {
     typeof data === 'object' && data !== null && "marketdata" in data;
@@ -55,18 +70,7 @@ const userAssets = async (fastify, opts) => {
                     };
                 }));
                 const userAssets = userAssetsWithPrice.map((asset) => {
-                    return {
-                        price: asset.price,
-                        totalPrice: asset.totalPrice,
-                        changePercent: asset.changePercent,
-                        boardName: asset.boardName,
-                        category: asset.category,
-                        id: asset.id,
-                        name: asset.name,
-                        quantity: asset.quantity,
-                        sector: asset.sector,
-                        ticker: asset.ticker,
-                    };
+                    return getAssetResponseType(asset);
                 });
                 reply.send({ userAssets });
             }
@@ -85,7 +89,7 @@ const userAssets = async (fastify, opts) => {
         }
     });
     fastify.post('/add-asset', async function (request, reply) {
-        const { userId, ticker, name, category, sector, quantity, boardName } = request.body;
+        const { userId, ticker, name, category, sector, quantity, boardName, comment } = request.body;
         if (!userId || !ticker || !name || !category || !sector || typeof quantity !== 'number' || !boardName) {
             return reply.code(400).send({ error: `Недостаточно данных!, userId:${!userId}, ticker:${!ticker}, name: ${!name}, category:${!category}, sector: ${!sector}, quantity: ${typeof quantity !== 'number'}, boardName: ${!boardName}` });
         }
@@ -96,15 +100,19 @@ const userAssets = async (fastify, opts) => {
                 .eq('user_id', userId)
                 .eq('ticker', ticker);
             if (!existingRecord?.length) {
-                const { data, error } = await supabase.from('user-assets').insert({
+                const { data, error } = await supabase.from('user-assets')
+                    .insert({
                     user_id: userId,
                     ticker,
                     name,
                     category,
                     sector,
                     quantity,
+                    comment,
                     boardName
-                });
+                })
+                    .select()
+                    .single();
                 if (error)
                     throw error;
                 reply.send({ message: 'Актив успешно добавлен!', data });
@@ -130,11 +138,31 @@ const userAssets = async (fastify, opts) => {
             quantity
         })
             .eq('id', assetId)
-            .select();
+            .select()
+            .single();
         if (error) {
             return reply.status(500).send(error);
         }
-        return reply.send(data);
+        const updatedAsset = getAssetResponseType(data);
+        return reply.send(updatedAsset);
+    });
+    fastify.patch('/edit-asset', async function (request, reply) {
+        const { assetId, sector, comment, category } = request.body;
+        const { data, error } = await supabase
+            .from('user-assets')
+            .update({
+            sector,
+            comment,
+            category
+        })
+            .eq('id', assetId)
+            .select()
+            .single();
+        if (error) {
+            return reply.status(500).send(error);
+        }
+        const updatedAsset = getAssetResponseType(data);
+        return reply.send(updatedAsset);
     });
     fastify.delete('/delete-asset', async function (request, reply) {
         const { assetId } = request.query;

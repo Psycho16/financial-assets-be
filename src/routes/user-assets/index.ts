@@ -23,6 +23,7 @@ interface AddAsset {
   ticker: string
   name: string
   category: string
+  comment: string
   sector: string
   quantity: number
   boardName: string
@@ -33,12 +34,41 @@ interface EditQuantity {
   quantity: number
 }
 
+interface EditAsset {
+  assetId: string
+  category: string
+  sector: string
+  comment: string
+}
+
 interface DeleteAsset {
   assetId: string
 }
 
 interface DeleteGeneric extends RouteGenericInterface {
   Querystring: DeleteAsset;
+}
+
+type AssetResponse = Omit<Database["public"]["Tables"]["user-assets"]["Row"], "user_id" | "created_at"> & Partial<{
+  price: number
+  totalPrice: number
+  changePercent: number
+}>
+
+const getAssetResponseType = (asset: AssetResponse) => {
+  return {
+    price: asset.price,
+    totalPrice: asset.totalPrice,
+    changePercent: asset.changePercent,
+    boardName: asset.boardName,
+    category: asset.category,
+    id: asset.id,
+    name: asset.name,
+    quantity: asset.quantity,
+    sector: asset.sector,
+    ticker: asset.ticker,
+    comment: asset.comment,
+  }
 }
 
 const supabase = createClient<Database>(process.env.SUPABASE_URL ?? "", process.env.SUPABASE_ANON_KEY ?? "");
@@ -96,18 +126,7 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         }))
 
         const userAssets = userAssetsWithPrice.map((asset) => {
-          return {
-            price: asset.price,
-            totalPrice: asset.totalPrice,
-            changePercent: asset.changePercent,
-            boardName: asset.boardName,
-            category: asset.category,
-            id: asset.id,
-            name: asset.name,
-            quantity: asset.quantity,
-            sector: asset.sector,
-            ticker: asset.ticker,
-          }
+          return getAssetResponseType(asset)
         })
 
         reply.send({ userAssets });
@@ -126,7 +145,7 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   })
 
   fastify.post<{ Body: AddAsset }>('/add-asset', async function (request, reply) {
-    const { userId, ticker, name, category, sector, quantity, boardName } = request.body;
+    const { userId, ticker, name, category, sector, quantity, boardName, comment } = request.body;
 
     // Проверяем наличие обязательных полей
     if (!userId || !ticker || !name || !category || !sector || typeof quantity !== 'number' || !boardName) {
@@ -141,15 +160,19 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
         .eq('ticker', ticker)
 
       if (!existingRecord?.length) {
-        const { data, error } = await supabase.from('user-assets').insert({
-          user_id: userId,
-          ticker,
-          name,
-          category,
-          sector,
-          quantity,
-          boardName
-        });
+        const { data, error } = await supabase.from('user-assets')
+          .insert({
+            user_id: userId,
+            ticker,
+            name,
+            category,
+            sector,
+            quantity,
+            comment,
+            boardName
+          })
+          .select()
+          .single()
 
         if (error) throw error;
         reply.send({ message: 'Актив успешно добавлен!', data });
@@ -176,12 +199,34 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       })
       .eq('id', assetId)
       .select()
+      .single()
+
+    if (error) {
+      return reply.status(500).send(error);
+    }
+    const updatedAsset = getAssetResponseType(data)
+    return reply.send(updatedAsset);
+  })
+
+  fastify.patch<{ Body: EditAsset }>('/edit-asset', async function (request, reply) {
+    const { assetId, sector, comment, category } = request.body
+    const { data, error } = await supabase
+      .from('user-assets')
+      .update({
+        sector,
+        comment,
+        category
+      })
+      .eq('id', assetId)
+      .select()
+      .single()
 
     if (error) {
       return reply.status(500).send(error);
     }
 
-    return reply.send(data);
+    const updatedAsset = getAssetResponseType(data)
+    return reply.send(updatedAsset);
   })
 
   fastify.delete<DeleteGeneric>('/delete-asset', async function (request, reply) {
