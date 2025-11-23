@@ -1,17 +1,29 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const supabase_js_1 = require("@supabase/supabase-js");
+const getDepositResponseType = (deposit) => {
+    return {
+        amount: deposit.amount,
+        id: deposit.id,
+        name: deposit.name,
+        endDate: deposit.end_date,
+        ratePercent: deposit.rate_percent,
+    };
+};
 const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL ?? "", process.env.SUPABASE_ANON_KEY ?? "");
 const userDeposits = async (fastify, opts) => {
     fastify.get('/', async function (request, reply) {
         const { userId } = request.query;
         try {
-            const { data: userDeposits, error: userDepositsError } = await supabase
+            const { data, error: userDepositsError } = await supabase
                 .from('user-deposits')
                 .select('*')
                 .eq('user_id', userId);
             if (userDepositsError)
                 throw userDepositsError;
+            const userDeposits = data.map(item => {
+                return getDepositResponseType(item);
+            });
             reply.send({ userDeposits });
         }
         catch (err) {
@@ -51,11 +63,31 @@ const userDeposits = async (fastify, opts) => {
             amount
         })
             .eq('id', depositId)
-            .select();
+            .select()
+            .single();
         if (error) {
             return reply.status(500).send(error);
         }
-        return reply.send(data);
+        const updatedDeposit = getDepositResponseType(data);
+        return reply.send(updatedDeposit);
+    });
+    fastify.patch('/edit-deposit', async function (request, reply) {
+        const { depositId, endDate, ratePercent, name } = request.body;
+        const { data, error } = await supabase
+            .from('user-deposits')
+            .update({
+            name,
+            end_date: endDate,
+            rate_percent: ratePercent
+        })
+            .eq('id', depositId)
+            .select()
+            .single();
+        if (error) {
+            return reply.status(500).send(error);
+        }
+        const updatedDeposit = getDepositResponseType(data);
+        return reply.send(updatedDeposit);
     });
     fastify.delete('/delete-deposit', async function (request, reply) {
         const { depositId } = request.query;

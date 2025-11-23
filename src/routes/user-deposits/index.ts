@@ -13,7 +13,7 @@ interface MyRouteGeneric extends RouteGenericInterface {
 interface AddDeposit {
   userId: string
   name: string
-  endDate: string // ISO date string
+  endDate: string
   amount: number
   ratePercent: number
 }
@@ -27,8 +27,28 @@ interface EditDepositAmount {
   amount: number
 }
 
+interface EditDeposit {
+  depositId: string
+  name: string
+  endDate: string
+  ratePercent: number
+}
+
 interface DeleteGeneric extends RouteGenericInterface {
   Querystring: DeleteAsset;
+}
+
+type DepositResponse = Omit<Database["public"]["Tables"]["user-deposits"]["Row"], "user_id" | "created_at"> & Partial<{
+}>
+
+const getDepositResponseType = (deposit: DepositResponse) => {
+  return {
+    amount: deposit.amount,
+    id: deposit.id,
+    name: deposit.name,
+    endDate: deposit.end_date,
+    ratePercent: deposit.rate_percent,
+  }
 }
 
 const supabase = createClient<Database>(process.env.SUPABASE_URL ?? "", process.env.SUPABASE_ANON_KEY ?? "");
@@ -38,13 +58,15 @@ const userDeposits: FastifyPluginAsync = async (fastify, opts): Promise<void> =>
     const { userId } = request.query
 
     try {
-      const { data: userDeposits, error: userDepositsError } = await supabase
+      const { data, error: userDepositsError } = await supabase
         .from('user-deposits')
         .select('*')
         .eq('user_id', userId)
 
       if (userDepositsError) throw userDepositsError;
-
+      const userDeposits = data.map(item => {
+        return getDepositResponseType(item)
+      })
       reply.send({ userDeposits });
     } catch (err) {
       reply.code(400).send({
@@ -92,12 +114,35 @@ const userDeposits: FastifyPluginAsync = async (fastify, opts): Promise<void> =>
       })
       .eq('id', depositId)
       .select()
+      .single()
 
     if (error) {
       return reply.status(500).send(error);
     }
 
-    return reply.send(data);
+    const updatedDeposit = getDepositResponseType(data)
+    return reply.send(updatedDeposit);
+  })
+
+  fastify.patch<{ Body: EditDeposit }>('/edit-deposit', async function (request, reply) {
+    const { depositId, endDate, ratePercent, name } = request.body
+    const { data, error } = await supabase
+      .from('user-deposits')
+      .update({
+        name,
+        end_date: endDate,
+        rate_percent: ratePercent
+      })
+      .eq('id', depositId)
+      .select()
+      .single()
+
+    if (error) {
+      return reply.status(500).send(error);
+    }
+
+    const updatedDeposit = getDepositResponseType(data)
+    return reply.send(updatedDeposit);
   })
 
   fastify.delete<DeleteGeneric>('/delete-deposit', async function (request, reply) {
