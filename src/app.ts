@@ -2,6 +2,7 @@ import { join } from 'node:path'
 import AutoLoad, { AutoloadPluginOptions } from '@fastify/autoload'
 import { FastifyPluginAsync, FastifyServerOptions } from 'fastify'
 import cors from '@fastify/cors'
+import { ACCEPT_ORIGINS } from './constants/acceps-origins'
 export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions> {
 
 }
@@ -35,7 +36,14 @@ const app: FastifyPluginAsync<AppOptions> = async (
   })
 
   void fastify.register(cors, {
-    origin: ["http://localhost:5173", "https://financial-assets.vercel.app"],
+    origin: (origin, cb) => {
+
+      if (origin && ACCEPT_ORIGINS.includes(origin)) {
+        cb(null, true)
+        return
+      }
+      cb(new Error("Not allowed"), false)
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
   })
 

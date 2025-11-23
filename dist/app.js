@@ -7,6 +7,7 @@ exports.options = exports.app = void 0;
 const node_path_1 = require("node:path");
 const autoload_1 = __importDefault(require("@fastify/autoload"));
 const cors_1 = __importDefault(require("@fastify/cors"));
+const acceps_origins_1 = require("./constants/acceps-origins");
 const options = {};
 exports.options = options;
 const app = async (fastify, opts) => {
@@ -19,7 +20,13 @@ const app = async (fastify, opts) => {
         options: opts
     });
     void fastify.register(cors_1.default, {
-        origin: ["http://localhost:5173", "https://financial-assets.vercel.app"],
+        origin: (origin, cb) => {
+            if (origin && acceps_origins_1.ACCEPT_ORIGINS.includes(origin)) {
+                cb(null, true);
+                return;
+            }
+            cb(new Error("Not allowed"), false);
+        },
         methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
     });
 };
