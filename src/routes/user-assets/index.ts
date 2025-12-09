@@ -78,6 +78,58 @@ const isMarketDataCorrect = (data: unknown): data is { marketdata: { columns: st
   return typeof data === 'object' && data !== null && "marketdata" in data && typeof data.marketdata === 'object' && data.marketdata !== null && "columns" in data.marketdata && Array.isArray(data.marketdata.columns) && "data" in data.marketdata && Array.isArray(data.marketdata.data)
 }
 
+const getAssetDataPromise = async (assetData: Database["public"]["Tables"]["user-assets"]["Row"]): Promise<AssetResponse> => {
+  const { ticker, boardName } = assetData
+  if (!ticker || !boardName) return {
+    ...assetData,
+    price: 0,
+    totalPrice: 0,
+    changePercent: 0,
+  }
+  const boardLink = getMoexBoardLink(ticker, boardName)
+  const moexResp = await fetch(boardLink)
+  const data = await moexResp.json();
+
+  const columns: string[] = isMarketDataCorrect(data) ? data?.marketdata?.columns : []
+  const dataRows: any[] = isMarketDataCorrect(data) ? data?.marketdata?.data : []
+  const marketPriceIdx = columns.indexOf('MARKETPRICE')
+  const lastPriceIdx = columns.indexOf('LAST')
+  const lastToPrevPriceIdx = columns.indexOf('LASTTOPREVPRICE')
+  const row = Array.isArray(dataRows) && dataRows.length > 0 ? dataRows[0] : undefined
+
+  const marketPrice = marketPriceIdx !== -1 && row ? Number(row[marketPriceIdx]) : NaN
+  const last = lastPriceIdx !== -1 && row && Number(row[lastPriceIdx]) > 0 ? Number(row[lastPriceIdx]) : marketPrice
+  const prcnt = (lastToPrevPriceIdx !== -1 && row ? Number(row[lastToPrevPriceIdx]) : NaN) ?? 0
+
+  const stringifiedTotalPrice = (last * (assetData.quantity || 0)).toFixed(2)
+  return {
+    ...assetData,
+    price: last,
+    totalPrice: +stringifiedTotalPrice,
+    changePercent: prcnt,
+  }
+}
+
+async function retry<T>(fn: () => Promise<T>, retriesLeft = 3, interval = 200) {
+  try {
+    // Attempt to execute the function and await the result
+    return await fn();
+  } catch (error) {
+    // If it fails and there are no retries left, throw the final error
+    if (retriesLeft === 0) {
+      throw new Error(`Max retries exceeded. Last error: ${error}`);
+    }
+
+    // Wait for the specified interval (optional: implement exponential backoff here)
+    await new Promise(resolve => setTimeout(resolve, interval));
+
+    console.log(`Retrying failed promise... ${retriesLeft} attempts left.`);
+
+    // Recursively call retry with one less retry attempt
+    return retry(fn, retriesLeft - 1, interval);
+  }
+}
+
 const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
   fastify.get<MyRouteGeneric>('/', async function (request, reply) {
     const { userId } = request.query
@@ -94,35 +146,8 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       try {
 
         const userAssetsWithPrice = await Promise.all(userAssetsFromDB.map(async (assetData) => {
-          const { ticker, boardName } = assetData
-          if (!ticker || !boardName) return {
-            ...assetData,
-            price: 0,
-            totalPrice: 0,
-            changePercent: 0,
-          }
-          const boardLink = getMoexBoardLink(ticker, boardName)
-          const moexResp = await fetch(boardLink)
-          const data = await moexResp.json();
-
-          const columns: string[] = isMarketDataCorrect(data) ? data?.marketdata?.columns : []
-          const dataRows: any[] = isMarketDataCorrect(data) ? data?.marketdata?.data : []
-          const marketPriceIdx = columns.indexOf('MARKETPRICE')
-          const lastPriceIdx = columns.indexOf('LAST')
-          const lastToPrevPriceIdx = columns.indexOf('LASTTOPREVPRICE')
-          const row = Array.isArray(dataRows) && dataRows.length > 0 ? dataRows[0] : undefined
-
-          const marketPrice = marketPriceIdx !== -1 && row ? Number(row[marketPriceIdx]) : NaN
-          const last = lastPriceIdx !== -1 && row && Number(row[lastPriceIdx]) > 0 ? Number(row[lastPriceIdx]) : marketPrice
-          const prcnt = (lastToPrevPriceIdx !== -1 && row ? Number(row[lastToPrevPriceIdx]) : NaN) ?? 0
-
-          const stringifiedTotalPrice = (last * (assetData.quantity || 0)).toFixed(2)
-          return {
-            ...assetData,
-            price: last,
-            totalPrice: +stringifiedTotalPrice,
-            changePercent: prcnt,
-          }
+          const promiseCallback = () => getAssetDataPromise(assetData)
+          return retry(promiseCallback)
         }))
 
         const userAssets = userAssetsWithPrice.map((asset) => {
