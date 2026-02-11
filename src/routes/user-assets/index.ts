@@ -104,7 +104,12 @@ const getAssetDataPromise = async (assetData: Database["public"]["Tables"]["user
   }
   const boardLink = getMoexBoardLink(ticker, boardName)
   console.info("boardLink", boardLink, ticker, boardName);
-  const moexResp = await fetch(boardLink)
+  const moexResp = await fetch(boardLink, {
+    headers: {
+      "Access-Control-Allow-Origin": "*"
+    }
+  }
+  )
   console.info("moexResp", moexResp);
   const data = await moexResp.json();
   console.info("data", data);
