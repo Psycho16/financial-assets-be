@@ -82,12 +82,15 @@ const userAssets = async (fastify, opts) => {
             if (!Array.isArray(userAssetsFromDB))
                 throw "Ошибка получения данных для этого пользователя";
             try {
-                const userAssetsWithPrice = await Promise.all(userAssetsFromDB.map(async (assetData) => {
+                const userAssetsWithPrice = await Promise.allSettled(userAssetsFromDB.map(async (assetData) => {
                     const promiseCallback = () => getAssetDataPromise(assetData);
                     return retry(promiseCallback);
                 }));
-                const userAssets = userAssetsWithPrice.map((asset) => {
-                    return getAssetResponseType(asset);
+                const userAssets = userAssetsWithPrice.map((promiseResult) => {
+                    if (promiseResult.status === "fulfilled") {
+                        return getAssetResponseType(promiseResult.value);
+                    }
+                    console.info('promiseResult reason', promiseResult.reason);
                 });
                 reply.send({ userAssets });
             }
