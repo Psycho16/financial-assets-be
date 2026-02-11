@@ -53,7 +53,9 @@ const getAssetDataPromise = async (assetData) => {
         };
     const boardLink = getMoexBoardLink(ticker, boardName);
     const moexResp = await fetch(boardLink);
+    console.info("moexResp", moexResp);
     const data = await moexResp.json();
+    console.info("data", data);
     const columns = isMarketDataCorrect(data) ? data?.marketdata?.columns : [];
     const dataRows = isMarketDataCorrect(data) ? data?.marketdata?.data : [];
     const marketPriceIdx = columns.indexOf('MARKETPRICE');

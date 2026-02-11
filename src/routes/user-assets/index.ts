@@ -104,8 +104,9 @@ const getAssetDataPromise = async (assetData: Database["public"]["Tables"]["user
   }
   const boardLink = getMoexBoardLink(ticker, boardName)
   const moexResp = await fetch(boardLink)
+  console.info("moexResp", moexResp);
   const data = await moexResp.json();
-
+  console.info("data", data);
   const columns: string[] = isMarketDataCorrect(data) ? data?.marketdata?.columns : []
   const dataRows: any[] = isMarketDataCorrect(data) ? data?.marketdata?.data : []
   const marketPriceIdx = columns.indexOf('MARKETPRICE')
