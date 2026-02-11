@@ -7,6 +7,21 @@ const getMoexBoardLink = (secid, boardName) => {
     }
     return `https://iss.moex.com/iss/engines/stock/markets/shares/boards/${boardName}/securities/${encodeURIComponent(secid)}.json?iss.meta=off&iss.only=marketdata&lang=ru`;
 };
+const getAssetResponseIfError = (reason) => {
+    return {
+        price: 0,
+        totalPrice: 0,
+        changePercent: 0,
+        boardName: "none",
+        category: "none",
+        id: "none",
+        name: "none",
+        quantity: 0,
+        sector: "none",
+        ticker: "none",
+        comment: reason,
+    };
+};
 const getAssetResponseType = (asset) => {
     return {
         price: asset.price,
@@ -91,6 +106,7 @@ const userAssets = async (fastify, opts) => {
                         return getAssetResponseType(promiseResult.value);
                     }
                     console.info('promiseResult reason', promiseResult.reason);
+                    return getAssetResponseIfError(promiseResult.reason);
                 });
                 reply.send({ userAssets });
             }

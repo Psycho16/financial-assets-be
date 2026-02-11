@@ -55,6 +55,22 @@ type AssetResponse = Omit<Database["public"]["Tables"]["user-assets"]["Row"], "u
   changePercent: number
 }>
 
+const getAssetResponseIfError = (reason: string) => {
+  return {
+    price: 0,
+    totalPrice: 0,
+    changePercent: 0,
+    boardName: "none",
+    category: "none",
+    id: "none",
+    name: "none",
+    quantity: 0,
+    sector: "none",
+    ticker: "none",
+    comment: reason,
+  }
+}
+
 const getAssetResponseType = (asset: AssetResponse) => {
   return {
     price: asset.price,
@@ -153,7 +169,9 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
           if (promiseResult.status === "fulfilled") {
             return getAssetResponseType(promiseResult.value)
           }
+
           console.info('promiseResult reason', promiseResult.reason)
+          return getAssetResponseIfError(promiseResult.reason)
         })
 
         reply.send({ userAssets });
