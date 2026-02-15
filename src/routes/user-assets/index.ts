@@ -106,30 +106,35 @@ const getAssetDataPromise = async (assetData: Database["public"]["Tables"]["user
   }
   const boardLink = getMoexBoardLink(ticker, boardName)
   console.info("boardLink", boardLink, ticker, boardName);
-  const moexResp = await fetch(boardLink, {
-    credentials: "omit",
+  try {
+    const moexResp = await fetch(boardLink, {
+      credentials: "omit",
+    }
+    )
+    console.info("moexResp", moexResp);
+    const data = await moexResp.json();
+    console.info("data", data);
+    const columns: string[] = isMarketDataCorrect(data) ? data?.marketdata?.columns : []
+    const dataRows: any[] = isMarketDataCorrect(data) ? data?.marketdata?.data : []
+    const marketPriceIdx = columns.indexOf('MARKETPRICE')
+    const lastPriceIdx = columns.indexOf('LAST')
+    const lastToPrevPriceIdx = columns.indexOf('LASTTOPREVPRICE')
+    const row = Array.isArray(dataRows) && dataRows.length > 0 ? dataRows[0] : undefined
+
+    const marketPrice = marketPriceIdx !== -1 && row ? Number(row[marketPriceIdx]) : NaN
+    const last = lastPriceIdx !== -1 && row && Number(row[lastPriceIdx]) > 0 ? Number(row[lastPriceIdx]) : marketPrice
+    const prcnt = (lastToPrevPriceIdx !== -1 && row ? Number(row[lastToPrevPriceIdx]) : NaN) ?? 0
+
+    const stringifiedTotalPrice = (last * (assetData.quantity || 0)).toFixed(2)
+    return {
+      ...assetData,
+      price: last,
+      totalPrice: +stringifiedTotalPrice,
+      changePercent: prcnt,
+    }
   }
-  )
-  console.info("moexResp", moexResp);
-  const data = await moexResp.json();
-  console.info("data", data);
-  const columns: string[] = isMarketDataCorrect(data) ? data?.marketdata?.columns : []
-  const dataRows: any[] = isMarketDataCorrect(data) ? data?.marketdata?.data : []
-  const marketPriceIdx = columns.indexOf('MARKETPRICE')
-  const lastPriceIdx = columns.indexOf('LAST')
-  const lastToPrevPriceIdx = columns.indexOf('LASTTOPREVPRICE')
-  const row = Array.isArray(dataRows) && dataRows.length > 0 ? dataRows[0] : undefined
-
-  const marketPrice = marketPriceIdx !== -1 && row ? Number(row[marketPriceIdx]) : NaN
-  const last = lastPriceIdx !== -1 && row && Number(row[lastPriceIdx]) > 0 ? Number(row[lastPriceIdx]) : marketPrice
-  const prcnt = (lastToPrevPriceIdx !== -1 && row ? Number(row[lastToPrevPriceIdx]) : NaN) ?? 0
-
-  const stringifiedTotalPrice = (last * (assetData.quantity || 0)).toFixed(2)
-  return {
-    ...assetData,
-    price: last,
-    totalPrice: +stringifiedTotalPrice,
-    changePercent: prcnt,
+  catch (e) {
+    console.info(e)
   }
 }
 
