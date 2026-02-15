@@ -96,8 +96,6 @@ const isMarketDataCorrect = (data: unknown): data is { marketdata: { columns: st
   return typeof data === 'object' && data !== null && "marketdata" in data && typeof data.marketdata === 'object' && data.marketdata !== null && "columns" in data.marketdata && Array.isArray(data.marketdata.columns) && "data" in data.marketdata && Array.isArray(data.marketdata.data)
 }
 
-const MOEX_FETCH_TIMEOUT_MS = 8_000
-
 const getAssetDataPromise = async (assetData: Database["public"]["Tables"]["user-assets"]["Row"]): Promise<AssetResponse> => {
   const { ticker, boardName } = assetData
   if (!ticker || !boardName) return {
@@ -108,15 +106,12 @@ const getAssetDataPromise = async (assetData: Database["public"]["Tables"]["user
   }
   const boardLink = getMoexBoardLink(ticker, boardName)
   console.info("boardLink", boardLink, ticker, boardName);
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), MOEX_FETCH_TIMEOUT_MS)
-
   const moexResp = await fetch(boardLink, {
-    credentials: "omit",
-    signal: controller.signal,
+    headers: {
+      "Access-Control-Allow-Origin": "*"
+    }
   }
   )
-  clearTimeout(timeoutId)
   console.info("moexResp", moexResp);
   const data = await moexResp.json();
   console.info("data", data);
@@ -138,28 +133,24 @@ const getAssetDataPromise = async (assetData: Database["public"]["Tables"]["user
     totalPrice: +stringifiedTotalPrice,
     changePercent: prcnt,
   }
-
 }
 
-function isConnectTimeout(error: unknown): boolean {
-  const cause = error && typeof error === 'object' && 'cause' in error ? (error as { cause?: unknown }).cause : null
-  return typeof cause === 'object' && cause !== null && 'code' in cause && (cause as { code?: string }).code === 'UND_ERR_CONNECT_TIMEOUT'
-}
-
-async function retry<T>(fn: () => Promise<T>, retriesLeft = 2, interval = 200): Promise<T> {
+async function retry<T>(fn: () => Promise<T>, retriesLeft = 3, interval = 200) {
   try {
+    // Attempt to execute the function and await the result
     return await fn();
   } catch (error) {
+    // If it fails and there are no retries left, throw the final error
     if (retriesLeft === 0) {
       throw new Error(`Max retries exceeded. Last error: ${error}`);
     }
-    if (isConnectTimeout(error)) {
-      console.log('Connect timeout to MOEX, skipping retries (likely unreachable from this region).');
-      throw error;
-    }
 
+    // Wait for the specified interval (optional: implement exponential backoff here)
     await new Promise(resolve => setTimeout(resolve, interval));
+
     console.log(`Retrying failed promise... ${retriesLeft} attempts left.`);
+
+    // Recursively call retry with one less retry attempt
     return retry(fn, retriesLeft - 1, interval);
   }
 }
@@ -188,7 +179,7 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
             return getAssetResponseType(promiseResult.value)
           }
 
-          return getAssetResponseIfError(JSON.stringify(promiseResult.reason), userAssetsFromDB[index])
+          return getAssetResponseIfError(promiseResult.reason, userAssetsFromDB[index])
         })
 
         reply.send({ userAssets });

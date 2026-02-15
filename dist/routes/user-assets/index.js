@@ -44,7 +44,6 @@ const isMarketDataCorrect = (data) => {
     typeof data === 'object' && data !== null && "marketdata" in data;
     return typeof data === 'object' && data !== null && "marketdata" in data && typeof data.marketdata === 'object' && data.marketdata !== null && "columns" in data.marketdata && Array.isArray(data.marketdata.columns) && "data" in data.marketdata && Array.isArray(data.marketdata.data);
 };
-const MOEX_FETCH_TIMEOUT_MS = 8_000;
 const getAssetDataPromise = async (assetData) => {
     const { ticker, boardName } = assetData;
     if (!ticker || !boardName)
@@ -56,13 +55,11 @@ const getAssetDataPromise = async (assetData) => {
         };
     const boardLink = getMoexBoardLink(ticker, boardName);
     console.info("boardLink", boardLink, ticker, boardName);
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), MOEX_FETCH_TIMEOUT_MS);
     const moexResp = await fetch(boardLink, {
-        credentials: "omit",
-        signal: controller.signal,
+        headers: {
+            "Access-Control-Allow-Origin": "*"
+        }
     });
-    clearTimeout(timeoutId);
     console.info("moexResp", moexResp);
     const data = await moexResp.json();
     console.info("data", data);
@@ -83,21 +80,13 @@ const getAssetDataPromise = async (assetData) => {
         changePercent: prcnt,
     };
 };
-function isConnectTimeout(error) {
-    const cause = error && typeof error === 'object' && 'cause' in error ? error.cause : null;
-    return typeof cause === 'object' && cause !== null && 'code' in cause && cause.code === 'UND_ERR_CONNECT_TIMEOUT';
-}
-async function retry(fn, retriesLeft = 2, interval = 200) {
+async function retry(fn, retriesLeft = 3, interval = 200) {
     try {
         return await fn();
     }
     catch (error) {
         if (retriesLeft === 0) {
             throw new Error(`Max retries exceeded. Last error: ${error}`);
-        }
-        if (isConnectTimeout(error)) {
-            console.log('Connect timeout to MOEX, skipping retries (likely unreachable from this region).');
-            throw error;
         }
         await new Promise(resolve => setTimeout(resolve, interval));
         console.log(`Retrying failed promise... ${retriesLeft} attempts left.`);
@@ -125,7 +114,7 @@ const userAssets = async (fastify, opts) => {
                     if (promiseResult.status === "fulfilled") {
                         return getAssetResponseType(promiseResult.value);
                     }
-                    return getAssetResponseIfError(JSON.stringify(promiseResult.reason), userAssetsFromDB[index]);
+                    return getAssetResponseIfError(promiseResult.reason, userAssetsFromDB[index]);
                 });
                 reply.send({ userAssets });
             }
