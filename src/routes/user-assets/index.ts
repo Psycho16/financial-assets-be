@@ -136,6 +136,13 @@ const getAssetDataPromise = async (assetData: Database["public"]["Tables"]["user
   catch (e) {
     console.info(e)
   }
+
+  return {
+    ...assetData,
+    price: 0,
+    totalPrice: 0,
+    changePercent: 0,
+  }
 }
 
 async function retry<T>(fn: () => Promise<T>, retriesLeft = 2, interval = 200) {
