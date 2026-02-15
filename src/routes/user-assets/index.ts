@@ -177,7 +177,7 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
             return getAssetResponseType(promiseResult.value)
           }
 
-          return getAssetResponseIfError(promiseResult.reason, userAssetsFromDB[index])
+          return getAssetResponseIfError(JSON.stringify(promiseResult.reason), userAssetsFromDB[index])
         })
 
         reply.send({ userAssets });
