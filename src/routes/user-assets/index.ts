@@ -173,7 +173,7 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
       try {
         const userAssetsWithPrice = await Promise.allSettled(userAssetsFromDB.map(async (assetData) => {
           const promiseCallback = () => getAssetDataPromise(assetData)
-          return retry(promiseCallback)
+          return retry(promiseCallback, 1)
         }))
 
         const userAssets = userAssetsWithPrice.map((promiseResult, index) => {
