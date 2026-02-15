@@ -48,26 +48,27 @@ interface DeleteAsset {
 interface DeleteGeneric extends RouteGenericInterface {
   Querystring: DeleteAsset;
 }
-
-type AssetResponse = Omit<Database["public"]["Tables"]["user-assets"]["Row"], "user_id" | "created_at"> & Partial<{
+type UserAssetsWithoutPrices = Omit<Database["public"]["Tables"]["user-assets"]["Row"], "user_id" | "created_at">
+type AssetResponse = UserAssetsWithoutPrices & Partial<{
   price: number
   totalPrice: number
   changePercent: number
 }>
 
-const getAssetResponseIfError = (reason: string) => {
+const getAssetResponseIfError = (reason: string, assetDataWithoutPrices: UserAssetsWithoutPrices) => {
   return {
     price: 0,
     totalPrice: 0,
     changePercent: 0,
-    boardName: "none",
-    category: "none",
-    id: "none",
-    name: "none",
-    quantity: 0,
-    sector: "none",
-    ticker: "none",
-    comment: reason,
+    boardName: assetDataWithoutPrices.boardName,
+    category: assetDataWithoutPrices.category,
+    id: assetDataWithoutPrices.id,
+    name: assetDataWithoutPrices.name,
+    quantity: assetDataWithoutPrices.quantity,
+    sector: assetDataWithoutPrices.sector,
+    ticker: assetDataWithoutPrices.ticker,
+    comment: assetDataWithoutPrices.comment,
+    errorReason: reason,
   }
 }
 
@@ -84,6 +85,7 @@ const getAssetResponseType = (asset: AssetResponse) => {
     sector: asset.sector,
     ticker: asset.ticker,
     comment: asset.comment,
+    errorReason: "",
   }
 }
 
@@ -172,13 +174,12 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
           return retry(promiseCallback)
         }))
 
-        const userAssets = userAssetsWithPrice.map((promiseResult) => {
+        const userAssets = userAssetsWithPrice.map((promiseResult, index) => {
           if (promiseResult.status === "fulfilled") {
             return getAssetResponseType(promiseResult.value)
           }
 
-          console.info('promiseResult reason', promiseResult.reason)
-          return getAssetResponseIfError(promiseResult.reason)
+          return getAssetResponseIfError(promiseResult.reason, userAssetsFromDB[index])
         })
 
         reply.send({ userAssets });

@@ -7,19 +7,20 @@ const getMoexBoardLink = (secid, boardName) => {
     }
     return `https://iss.moex.com/iss/engines/stock/markets/shares/boards/${boardName}/securities/${encodeURIComponent(secid)}.json?iss.meta=off&iss.only=marketdata&lang=ru`;
 };
-const getAssetResponseIfError = (reason) => {
+const getAssetResponseIfError = (reason, assetDataWithoutPrices) => {
     return {
         price: 0,
         totalPrice: 0,
         changePercent: 0,
-        boardName: "none",
-        category: "none",
-        id: "none",
-        name: "none",
-        quantity: 0,
-        sector: "none",
-        ticker: "none",
-        comment: reason,
+        boardName: assetDataWithoutPrices.boardName,
+        category: assetDataWithoutPrices.category,
+        id: assetDataWithoutPrices.id,
+        name: assetDataWithoutPrices.name,
+        quantity: assetDataWithoutPrices.quantity,
+        sector: assetDataWithoutPrices.sector,
+        ticker: assetDataWithoutPrices.ticker,
+        comment: assetDataWithoutPrices.comment,
+        errorReason: reason,
     };
 };
 const getAssetResponseType = (asset) => {
@@ -35,6 +36,7 @@ const getAssetResponseType = (asset) => {
         sector: asset.sector,
         ticker: asset.ticker,
         comment: asset.comment,
+        errorReason: "",
     };
 };
 const supabase = (0, supabase_js_1.createClient)(process.env.SUPABASE_URL ?? "", process.env.SUPABASE_ANON_KEY ?? "");
@@ -108,12 +110,11 @@ const userAssets = async (fastify, opts) => {
                     const promiseCallback = () => getAssetDataPromise(assetData);
                     return retry(promiseCallback);
                 }));
-                const userAssets = userAssetsWithPrice.map((promiseResult) => {
+                const userAssets = userAssetsWithPrice.map((promiseResult, index) => {
                     if (promiseResult.status === "fulfilled") {
                         return getAssetResponseType(promiseResult.value);
                     }
-                    console.info('promiseResult reason', promiseResult.reason);
-                    return getAssetResponseIfError(promiseResult.reason);
+                    return getAssetResponseIfError(promiseResult.reason, userAssetsFromDB[index]);
                 });
                 reply.send({ userAssets });
             }
