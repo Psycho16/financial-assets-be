@@ -135,7 +135,7 @@ const getAssetDataPromise = async (assetData: Database["public"]["Tables"]["user
   }
 }
 
-async function retry<T>(fn: () => Promise<T>, retriesLeft = 3, interval = 200) {
+async function retry<T>(fn: () => Promise<T>, retriesLeft = 2, interval = 200) {
   try {
     // Attempt to execute the function and await the result
     return await fn();
