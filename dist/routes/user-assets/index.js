@@ -55,30 +55,31 @@ const getAssetDataPromise = async (assetData) => {
         };
     const boardLink = getMoexBoardLink(ticker, boardName);
     console.info("boardLink", boardLink, ticker, boardName);
-    const moexResp = await fetch(boardLink, {
-        headers: {
-            "Access-Control-Allow-Origin": "*"
-        }
-    });
-    console.info("moexResp", moexResp);
-    const data = await moexResp.json();
-    console.info("data", data);
-    const columns = isMarketDataCorrect(data) ? data?.marketdata?.columns : [];
-    const dataRows = isMarketDataCorrect(data) ? data?.marketdata?.data : [];
-    const marketPriceIdx = columns.indexOf('MARKETPRICE');
-    const lastPriceIdx = columns.indexOf('LAST');
-    const lastToPrevPriceIdx = columns.indexOf('LASTTOPREVPRICE');
-    const row = Array.isArray(dataRows) && dataRows.length > 0 ? dataRows[0] : undefined;
-    const marketPrice = marketPriceIdx !== -1 && row ? Number(row[marketPriceIdx]) : NaN;
-    const last = lastPriceIdx !== -1 && row && Number(row[lastPriceIdx]) > 0 ? Number(row[lastPriceIdx]) : marketPrice;
-    const prcnt = (lastToPrevPriceIdx !== -1 && row ? Number(row[lastToPrevPriceIdx]) : NaN) ?? 0;
-    const stringifiedTotalPrice = (last * (assetData.quantity || 0)).toFixed(2);
-    return {
-        ...assetData,
-        price: last,
-        totalPrice: +stringifiedTotalPrice,
-        changePercent: prcnt,
-    };
+    try {
+        const moexResp = await fetch(boardLink);
+        console.info("moexResp", moexResp);
+        const data = await moexResp.json();
+        console.info("data", data);
+        const columns = isMarketDataCorrect(data) ? data?.marketdata?.columns : [];
+        const dataRows = isMarketDataCorrect(data) ? data?.marketdata?.data : [];
+        const marketPriceIdx = columns.indexOf('MARKETPRICE');
+        const lastPriceIdx = columns.indexOf('LAST');
+        const lastToPrevPriceIdx = columns.indexOf('LASTTOPREVPRICE');
+        const row = Array.isArray(dataRows) && dataRows.length > 0 ? dataRows[0] : undefined;
+        const marketPrice = marketPriceIdx !== -1 && row ? Number(row[marketPriceIdx]) : NaN;
+        const last = lastPriceIdx !== -1 && row && Number(row[lastPriceIdx]) > 0 ? Number(row[lastPriceIdx]) : marketPrice;
+        const prcnt = (lastToPrevPriceIdx !== -1 && row ? Number(row[lastToPrevPriceIdx]) : NaN) ?? 0;
+        const stringifiedTotalPrice = (last * (assetData.quantity || 0)).toFixed(2);
+        return {
+            ...assetData,
+            price: last,
+            totalPrice: +stringifiedTotalPrice,
+            changePercent: prcnt,
+        };
+    }
+    catch (e) {
+        throw e;
+    }
 };
 async function retry(fn, retriesLeft = 3, interval = 200) {
     try {
