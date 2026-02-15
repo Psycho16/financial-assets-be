@@ -87,7 +87,9 @@ async function retry(fn, retriesLeft = 3, interval = 200) {
     }
     catch (error) {
         if (retriesLeft === 0) {
-            throw new Error(`Max retries exceeded. Last error: ${error}`);
+            const finalError = new Error(`Max retries exceeded. Last error: ${error}`);
+            console.error(finalError.message, error);
+            throw finalError;
         }
         await new Promise(resolve => setTimeout(resolve, interval));
         console.log(`Retrying failed promise... ${retriesLeft} attempts left.`);
@@ -115,6 +117,7 @@ const userAssets = async (fastify, opts) => {
                     if (promiseResult.status === "fulfilled") {
                         return getAssetResponseType(promiseResult.value);
                     }
+                    console.error('Asset fetch failed after retries:', userAssetsFromDB[index]?.ticker, promiseResult.reason);
                     return getAssetResponseIfError(promiseResult.reason, userAssetsFromDB[index]);
                 });
                 reply.send({ userAssets });

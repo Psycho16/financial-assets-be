@@ -142,7 +142,9 @@ async function retry<T>(fn: () => Promise<T>, retriesLeft = 3, interval = 200) {
   } catch (error) {
     // If it fails and there are no retries left, throw the final error
     if (retriesLeft === 0) {
-      throw new Error(`Max retries exceeded. Last error: ${error}`);
+      const finalError = new Error(`Max retries exceeded. Last error: ${error}`);
+      console.error(finalError.message, error);
+      throw finalError;
     }
 
     // Wait for the specified interval (optional: implement exponential backoff here)
@@ -179,6 +181,7 @@ const userAssets: FastifyPluginAsync = async (fastify, opts): Promise<void> => {
             return getAssetResponseType(promiseResult.value)
           }
 
+          console.error('Asset fetch failed after retries:', userAssetsFromDB[index]?.ticker, promiseResult.reason);
           return getAssetResponseIfError(promiseResult.reason, userAssetsFromDB[index])
         })
 
